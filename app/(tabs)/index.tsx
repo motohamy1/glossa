@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Platform } from 'react-native';
+import { ActivityIndicator, Platform, Modal } from 'react-native';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, SafeAreaView } from '../../components/tw';
 import { Ionicons } from '@expo/vector-icons';
+
+const LANGUAGES = [
+    'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese',
+    'Russian', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi',
+    'Turkish', 'Dutch', 'Polish', 'Swedish'
+];
 
 const TranslatorPage = () => {
     const [sourceLang, setSourceLang] = useState('English');
@@ -9,6 +15,8 @@ const TranslatorPage = () => {
     const [sourceText, setSourceText] = useState('');
     const [translatedText, setTranslatedText] = useState('');
     const [isTranslating, setIsTranslating] = useState(false);
+    const [isLangModalVisible, setIsLangModalVisible] = useState(false);
+    const [selectingFor, setSelectingFor] = useState<'source' | 'target'>('source');
 
     const handleSwap = () => {
         setSourceLang(targetLang);
@@ -71,7 +79,10 @@ const TranslatorPage = () => {
 
                     {/* Language Selector */}
                     <View className="flex-row items-center justify-between bg-neutral-900 rounded-2xl p-2 mb-4 border border-neutral-800 shadow-sm">
-                        <TouchableOpacity className="flex-1 items-center py-3">
+                        <TouchableOpacity 
+                            className="flex-1 items-center py-3"
+                            onPress={() => { setSelectingFor('source'); setIsLangModalVisible(true); }}
+                        >
                             <Text className="text-white font-semibold text-lg">{sourceLang}</Text>
                         </TouchableOpacity>
                         
@@ -82,7 +93,10 @@ const TranslatorPage = () => {
                             <Ionicons name="swap-horizontal" size={24} color="white" />
                         </TouchableOpacity>
 
-                        <TouchableOpacity className="flex-1 items-center py-3">
+                        <TouchableOpacity 
+                            className="flex-1 items-center py-3"
+                            onPress={() => { setSelectingFor('target'); setIsLangModalVisible(true); }}
+                        >
                             <Text className="text-white font-semibold text-lg">{targetLang}</Text>
                         </TouchableOpacity>
                     </View>
@@ -135,6 +149,49 @@ const TranslatorPage = () => {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Language Selection Modal */}
+            <Modal
+                visible={isLangModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setIsLangModalVisible(false)}
+            >
+                <View className="flex-1 justify-end bg-black/70">
+                    <View className="bg-neutral-900 rounded-t-3xl h-2/3 border-t border-neutral-800">
+                        <View className="flex-row justify-between items-center p-5 border-b border-neutral-800">
+                            <Text className="text-white text-xl font-bold">
+                                Select {selectingFor === 'source' ? 'Source' : 'Target'} Language
+                            </Text>
+                            <TouchableOpacity onPress={() => setIsLangModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView className="p-4">
+                            {LANGUAGES.map((lang) => (
+                                <TouchableOpacity
+                                    key={lang}
+                                    className="py-4 border-b border-neutral-800/50"
+                                    onPress={() => {
+                                        if (selectingFor === 'source') setSourceLang(lang);
+                                        else setTargetLang(lang);
+                                        setIsLangModalVisible(false);
+                                    }}
+                                >
+                                    <Text className={`text-lg ${
+                                        (selectingFor === 'source' ? sourceLang : targetLang) === lang 
+                                            ? 'text-indigo-400 font-bold' 
+                                            : 'text-white'
+                                    }`}>
+                                        {lang}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                            <View className="h-10" />
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
