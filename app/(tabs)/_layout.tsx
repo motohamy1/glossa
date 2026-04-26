@@ -1,9 +1,15 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { Platform, useColorScheme } from 'react-native';
 
+const bgColor =
+    Platform.OS === 'ios'
+        ? require('react-native').DynamicColorIOS({
+            dark: 'rgba(10,10,10,0.92)',
+            light: 'rgba(255,255,255,0.92)',
+        })
+        : undefined;
 
 export default function TabLayout() {
-
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
@@ -26,10 +32,19 @@ export default function TabLayout() {
                 ? '#FFFFFF'
                 : '#000000';
 
+    const tabBarBackgroundColor =
+        Platform.OS === 'android'
+            ? isDark
+                ? 'rgba(10,10,10,0.92)'
+                : 'rgba(255,255,255,0.92)'
+            : bgColor;
+
     return (
         <NativeTabs
             tintColor={tintColor}
             labelStyle={{ color: labelColor }}
+            backgroundColor={tabBarBackgroundColor}
+            blurEffect="none"
         >
             <NativeTabs.Trigger name="index">
                 <NativeTabs.Trigger.Label>Translator</NativeTabs.Trigger.Label>
