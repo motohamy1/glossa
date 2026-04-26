@@ -2,14 +2,11 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Platform, Modal } from 'react-native';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, SafeAreaView } from '../../components/tw';
 import { Ionicons } from '@expo/vector-icons';
-
-const LANGUAGES = [
-    'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese',
-    'Russian', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi',
-    'Turkish', 'Dutch', 'Polish', 'Swedish'
-];
+import { useLanguages } from '../../hooks/useLanguages';
 
 const TranslatorPage = () => {
+    const { languages, fetchState, source: langSource, refetch } = useLanguages('http://192.168.1.7:8000');
+
     const [sourceLang, setSourceLang] = useState('English');
     const [targetLang, setTargetLang] = useState('Spanish');
     const [sourceText, setSourceText] = useState('');
@@ -18,6 +15,9 @@ const TranslatorPage = () => {
     const [isLangModalVisible, setIsLangModalVisible] = useState(false);
     const [selectingFor, setSelectingFor] = useState<'source' | 'target'>('source');
 
+    const isLoadingLanguages = fetchState === 'loading' || fetchState === 'idle';
+    const isOfflineMode = langSource === 'static';
+
     const handleSwap = () => {
         setSourceLang(targetLang);
         setTargetLang(sourceLang);
@@ -25,12 +25,11 @@ const TranslatorPage = () => {
         setTranslatedText(sourceText);
     };
 
-    // Your computer's LAN IP — physical devices can't use localhost
     const ML_BASE_URL = 'http://192.168.1.7:8000';
 
     const handleTranslate = async () => {
         if (!sourceText.trim()) return;
-        
+
         setIsTranslating(true);
         try {
             const response = await fetch(`${ML_BASE_URL}/ml/translate`, {
@@ -44,20 +43,35 @@ const TranslatorPage = () => {
                     target_lang: targetLang
                 }),
             });
-            
+
             if (!response.ok) {
                 const errBody = await response.text();
-                throw new Error(`Translation failed (${response.status}): ${errBody}`);
+                let detail = errBody;
+                try {
+                    const parsed = JSON.parse(errBody);
+                    detail = parsed.detail || errBody;
+                } catch {}
+
+                if (response.status === 503) {
+                    if (detail.includes('model not available')) {
+                        setTranslatedText('[Unavailable]: Translation model not installed for this language pair.\n\nOnly English ↔ Spanish is currently available.');
+                    } else {
+                        setTranslatedText('[Loading]: The translation engine is still preparing language models.\n\nPlease wait a moment and try again.');
+                    }
+                    return;
+                }
+                throw new Error(detail);
             }
-            
+
             const data = await response.json();
             setTranslatedText(data.translated_text);
-        } catch (error: any) {
-            console.error(error);
-            if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-                setTranslatedText(`[Network Error]: Can't reach the ML service.\n\nMake sure:\n1. Docker is running\n2. ml-service container is up\n3. Your phone and PC are on the same WiFi`);
+        } catch (error: unknown) {
+            const err = error as Error;
+            console.error(err);
+            if (err.message?.includes('Network request failed') || err.message?.includes('Failed to fetch')) {
+                setTranslatedText('[Network Error]: Can\'t reach the ML service.\n\nMake sure:\n1. Docker is running\n2. ml-service container is up\n3. Your phone and PC are on the same WiFi');
             } else {
-                setTranslatedText(`[Error]: ${error.message}`);
+                setTranslatedText(`[Error]: ${err.message}`);
             }
         } finally {
             setIsTranslating(false);
@@ -66,7 +80,7 @@ const TranslatorPage = () => {
 
     return (
         <SafeAreaView className="flex-1 bg-neutral-950">
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
             >
@@ -77,27 +91,54 @@ const TranslatorPage = () => {
                         <Text className="text-neutral-400 mt-1">AI-Powered Translation</Text>
                     </View>
 
+                    {/* Offline Indicator */}
+                    {isOfflineMode && (
+                        <View className="flex-row items-center bg-amber-900/30 rounded-xl px-4 py-2 mb-4 border border-amber-800/50">
+                            <Ionicons name="cloud-offline-outline" size={16} color="#D97706" />
+                            <Text className="text-amber-400 ml-2 text-sm">
+                                Using offline language list
+                            </Text>
+                            <TouchableOpacity
+                                onPress={refetch}
+                                className="ml-auto flex-row items-center"
+                            >
+                                <Ionicons name="refresh" size={14} color="#D97706" />
+                                <Text className="text-amber-400 ml-1 text-sm">Retry</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     {/* Language Selector */}
                     <View className="flex-row items-center justify-between bg-neutral-900 rounded-2xl p-2 mb-4 border border-neutral-800 shadow-sm">
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             className="flex-1 items-center py-3"
                             onPress={() => { setSelectingFor('source'); setIsLangModalVisible(true); }}
+                            disabled={isLoadingLanguages}
                         >
-                            <Text className="text-white font-semibold text-lg">{sourceLang}</Text>
+                            {isLoadingLanguages ? (
+                                <ActivityIndicator size="small" color="#6366F1" />
+                            ) : (
+                                <Text className="text-white font-semibold text-lg">{sourceLang}</Text>
+                            )}
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity 
+
+                        <TouchableOpacity
                             onPress={handleSwap}
                             className="bg-indigo-600 w-12 h-12 rounded-full items-center justify-center shadow-lg"
                         >
                             <Ionicons name="swap-horizontal" size={24} color="white" />
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             className="flex-1 items-center py-3"
                             onPress={() => { setSelectingFor('target'); setIsLangModalVisible(true); }}
+                            disabled={isLoadingLanguages}
                         >
-                            <Text className="text-white font-semibold text-lg">{targetLang}</Text>
+                            {isLoadingLanguages ? (
+                                <ActivityIndicator size="small" color="#6366F1" />
+                            ) : (
+                                <Text className="text-white font-semibold text-lg">{targetLang}</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
 
@@ -112,7 +153,7 @@ const TranslatorPage = () => {
                             onChangeText={setSourceText}
                         />
                         {sourceText.length > 0 && (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setSourceText('')}
                                 className="absolute top-4 right-4 bg-neutral-800 rounded-full p-1"
                             >
@@ -122,12 +163,12 @@ const TranslatorPage = () => {
                     </View>
 
                     {/* Translate Button */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={handleTranslate}
                         disabled={isTranslating || !sourceText.trim()}
                         className={`py-4 rounded-xl items-center justify-center mb-6 shadow-md ${
-                            isTranslating || !sourceText.trim() 
-                                ? 'bg-indigo-900/50' 
+                            isTranslating || !sourceText.trim()
+                                ? 'bg-indigo-900/50'
                                 : 'bg-indigo-600'
                         }`}
                     >
@@ -168,7 +209,7 @@ const TranslatorPage = () => {
                             </TouchableOpacity>
                         </View>
                         <ScrollView className="p-4">
-                            {LANGUAGES.map((lang) => (
+                            {languages.map((lang) => (
                                 <TouchableOpacity
                                     key={lang}
                                     className="py-4 border-b border-neutral-800/50"
@@ -179,8 +220,8 @@ const TranslatorPage = () => {
                                     }}
                                 >
                                     <Text className={`text-lg ${
-                                        (selectingFor === 'source' ? sourceLang : targetLang) === lang 
-                                            ? 'text-indigo-400 font-bold' 
+                                        (selectingFor === 'source' ? sourceLang : targetLang) === lang
+                                            ? 'text-indigo-400 font-bold'
                                             : 'text-white'
                                     }`}>
                                         {lang}

@@ -14,5 +14,11 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "tests/**/*",
+    "app-example/**/*",
+    "jest.config.js",
+    "node_modules"
   ]
 }

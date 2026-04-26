@@ -22,7 +22,7 @@
    - Make the `sourceLang` and `targetLang` Text elements pressable to open this selection modal.
    - Ensure the swap functionality still works correctly with the new state management.
 4. **Task 4: End-to-End Testing**
-   - Test translation in the UI if possible, or verify the frontend components compile without error.
+   - Test translation in the UI if possible, or verify the frontend components compile without error.12809779
 
 ## Phase 3: Implement
 *(Execution of the tasks listed in Phase 2)*

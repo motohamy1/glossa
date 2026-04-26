@@ -1,0 +1,18 @@
+export const STATIC_LANGUAGES: string[] = [
+  'English',
+  'Spanish',
+  'French',
+  'German',
+  'Italian',
+  'Portuguese',
+  'Russian',
+  'Chinese',
+  'Japanese',
+  'Korean',
+  'Arabic',
+  'Hindi',
+  'Turkish',
+  'Dutch',
+  'Polish',
+  'Swedish',
+];
